@@ -4,44 +4,44 @@
 #include <unistd.h>
 // fork(), exec(), wait()
 
-#define CMDLINE_MAX 512
-#define ARGS_MAX 16
-#define TOKEN_MAX 32
+// given assumptions of limits
+#define MAX_CMDLINE_SIZE 512
+#define MAX_NUM_ARGS 16
+#define MAX_TOKEN_SIZE 32
 
-// for builtin fns show that it worked
-void display_success(char* cmd) 
-{
-	fprintf(stderr, "+ completed '%s' ", cmd);
-	fprintf(stderr, "[%i]\n", EXIT_SUCCESS);
-}
+// for builtin functions show that it worked
+// void display_success(char* cmd) 
+// {
+// 	fprintf(stderr, "+ completed '%s' ", cmd);
+// 	fprintf(stderr, "[%i]\n", EXIT_SUCCESS);
+// }
 
-struct my_command {
-	char cmd[CMDLINE_MAX];
+// resolve user input into thre unique elements
+struct CommandLine {
+	char command[MAX_CMDLINE_SIZE];
 	int num_args;
-	char args[ARGS_MAX][TOKEN_MAX];
+	char args[MAX_NUM_ARGS][MAX_TOKEN_SIZE];
 };
 
-void parse_command(struct my_command *command, char* user_input) {
-	char user_input_copy[CMDLINE_MAX];
+void parse_user_input(struct CommandLine *MyCommandLine, char* user_input) {
+	// copy to preserve original input
+	char user_input_copy[MAX_CMDLINE_SIZE];
     strcpy(user_input_copy, user_input);
     //https://www.tutorialspoint.com/c_standard_library/c_function_strtok.htm
-    const char delim[2] = " ";
+    
+	const char delim[2] = " ";
     char* token;
 
     /* get the first token */
-	
     token = strtok(user_input_copy, delim);
-	strcpy(command->cmd, token);
-    printf("%s\n", token);
+	strcpy(MyCommandLine->command, token);
     /* walk through other tokens */
     int f = 0;
 	token = strtok(NULL, delim);
     while( token != NULL ) {
         // command->args = (char **) realloc(command->args, (command->num_args)*sizeof(char*));
-		
-		//printf("%s\n", token);
-		strcpy(command->args[f], token);
-		command->num_args = command->num_args + 1;
+		strcpy(MyCommandLine->args[f], token);
+		MyCommandLine->num_args = MyCommandLine->num_args + 1;
         f++;
 		token = strtok(NULL, delim);
    }
@@ -50,38 +50,37 @@ void parse_command(struct my_command *command, char* user_input) {
 
 int main(void)
 {
-	char cmd_str[CMDLINE_MAX];
-	// char buf[CMDLINE_MAX];
-	struct my_command command;
+	char user_input[MAX_CMDLINE_SIZE];
+	// char buf[MAX_CMDLINE_SIZE];
+	struct CommandLine MyCommandLine;
 
 	while (1) {
-		command.num_args = 0;
+		MyCommandLine.num_args = 0;
 
 	 	char *nl;
-	// 	//int retval;
+		//int retval;
 
 		/* Print prompt */
 		printf("sshell$ ");
 		fflush(stdout);
 
 		/* Get command line */
-		fgets(cmd_str, CMDLINE_MAX, stdin);
+		fgets(user_input, MAX_CMDLINE_SIZE, stdin);
 
 		// command.cmd = cmd;
 		/* Print command line if stdin is not provided by terminal */
 		if (!isatty(STDIN_FILENO)) {
-			printf("%s", cmd_str);
+			printf("%s", user_input);
 			fflush(stdout);
 		}
 
 		/* Remove trailing newline from command line */
-		nl = strchr(cmd_str, '\n');
+		nl = strchr(user_input, '\n');
 		if (nl)
 			*nl = '\0';
 
-        parse_command(&command, cmd_str);
-
-        printf("command = %s\nnum_args = %d\n", command.cmd, command.num_args);
+        parse_user_input(&MyCommandLine, user_input);
+		// printf("%s\n%d\n", MyCommandLine.command, MyCommandLine.num_args);
 		
 	// 	/* Builtin command */
 	// 	if (!strcmp(cmd, "exit")) {
@@ -91,7 +90,7 @@ int main(void)
 	// 	} else if (cmd[0] == 'c' && cmd[1] == 'd') {
 			
 	// 		/* strkok modifies original string, so we keep copy for printing */
-	// 		char cmd_copy[CMDLINE_MAX];
+	// 		char cmd_copy[MAX_CMDLINE_SIZE];
 	// 		strcpy(cmd_copy, cmd);
 	// 		//https://www.tutorialspoint.com/c_standard_library/c_function_strtok.htm
 	// 		const char delim[2] = " ";
@@ -108,7 +107,7 @@ int main(void)
 	// 		display_success(cmd);
 	// 	}
 	// 	else if (!strcmp(cmd, "pwd")) {
-	// 		fprintf(stdout, "%s", getcwd(buf, CMDLINE_MAX));
+	// 		fprintf(stdout, "%s", getcwd(buf, MAX_CMDLINE_SIZE));
 	// 		fprintf(stdout, "\n");
 	// 		display_success(cmd);
 	// 	} else {
@@ -117,6 +116,5 @@ int main(void)
 	// 		//fprintf(stdout, "Return status value for '%s': %d\n", cmd, retval);
 	// 	}
 	}
-	free(command.args);
 	return EXIT_SUCCESS;
 }
