@@ -35,16 +35,15 @@ void parse_command(struct my_command *command, char* user_input) {
     printf("%s\n", token);
     /* walk through other tokens */
     int f = 0;
+	token = strtok(NULL, delim);
     while( token != NULL ) {
         // command->args = (char **) realloc(command->args, (command->num_args)*sizeof(char*));
-		token = strtok(NULL, delim);
+		
 		//printf("%s\n", token);
-		if (token != NULL){
-			strcpy(command->args[f], token);
-			command->num_args = command->num_args + 1;
-
-		}
+		strcpy(command->args[f], token);
+		command->num_args = command->num_args + 1;
         f++;
+		token = strtok(NULL, delim);
    }
    
 }
@@ -68,7 +67,6 @@ int main(void)
 		/* Get command line */
 		fgets(cmd_str, CMDLINE_MAX, stdin);
 
-
 		// command.cmd = cmd;
 		/* Print command line if stdin is not provided by terminal */
 		if (!isatty(STDIN_FILENO)) {
@@ -83,7 +81,7 @@ int main(void)
 
         parse_command(&command, cmd_str);
 
-        printf("command = %s\n num_args = %d\n", command.cmd, command.num_args);
+        printf("command = %s\nnum_args = %d\n", command.cmd, command.num_args);
 		
 	// 	/* Builtin command */
 	// 	if (!strcmp(cmd, "exit")) {
