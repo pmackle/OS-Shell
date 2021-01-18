@@ -51,7 +51,6 @@ void parse_command_line(struct CommandLine *MyCommandLine, char* command_line)
 
 int main(void)
 {
-
 	while (1) {
         char command_line[MAX_CMDLINE_SIZE];
         char *nl;
