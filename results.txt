@@ -1,0 +1,85 @@
+sshell@ucd$ --- Running test case: builtin_exit ---
+Error: command not found
++ completed '--- Running test case: builtin_exit ---' [1]
+sshell@ucd$ Pass: Bye...
+Error: command not found
++ completed 'Pass: Bye...' [1]
+sshell@ucd$ Pass: + completed 'exit' [0]
+Error: command not found
++ completed 'Pass: + completed 'exit' [0]' [1]
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ --- Running test case: cmd_no_arg ---
+Error: command not found
++ completed '--- Running test case: cmd_no_arg ---' [1]
+sshell@ucd$ Pass: titi
+Error: command not found
++ completed 'Pass: titi' [1]
+sshell@ucd$ Pass: toto
+Error: command not found
++ completed 'Pass: toto' [1]
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ --- Running test case: cmd_one_arg ---
+Error: command not found
++ completed '--- Running test case: cmd_one_arg ---' [1]
+sshell@ucd$ Pass: lstest
+Error: command not found
++ completed 'Pass: lstest' [1]
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ --- Running test case: cd_pwd ---
+Error: command not found
++ completed '--- Running test case: cd_pwd ---' [1]
+sshell@ucd$ Pass: /home/runner/ECS150P1/ECS_150/tmp.cvoflwBCeB/dir_test
+Error: command not found
++ completed 'Pass: /home/runner/ECS150P1/ECS_150/tmp.cvoflwBCeB/dir_test' [1]
+sshell@ucd$ Pass: + completed 'cd dir_test' [0]
+Error: command not found
++ completed 'Pass: + completed 'cd dir_test' [0]' [1]
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ --- Running test case: out_redir ---
+Error: command not found
++ completed '--- Running test case: out_redir ---' [1]
+sshell@ucd$ Fail: got 'sshell$ cat t' but expected 'hello'
+Error: command not found
++ completed 'Fail: got 'sshell$ cat t' but expected 'hello'' [1]
+sshell@ucd$ 0
+Error: command not found
++ completed '0' [1]
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ --- Running test case: pipe ---
+Error: command not found
++ completed '--- Running test case: pipe ---' [1]
+sshell@ucd$ Fail: got 'hello world hello world | grep hello | wc -m' but expected '24'
+Error: command not found
+wc: invalid option -- '''
+Try 'wc --help' for more information.
++ completed 'Fail: got 'hello world hello world | grep hello | wc -m' but expected '24'' [1][1][1]
+sshell@ucd$ 0
+Error: command not found
++ completed '0' [1]
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ --- Running test case: variables_simple ---
+Error: command not found
++ completed '--- Running test case: variables_simple ---' [1]
+sshell@ucd$ Fail: got '$p' but expected ''
+Error: command not found
++ completed 'Fail: got '$p' but expected ''' [1]
+sshell@ucd$ Fail: got 'I love $p' but expected 'I love ecs150'
+Error: invalid variable name
+sshell@ucd$ 0
+Error: command not found
++ completed '0' [1]
+sshell@ucd$ 
+sshell@ucd$ 
+sshell@ucd$ exit
+Bye...
++ completed 'exit' [0]

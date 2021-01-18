@@ -17,7 +17,7 @@ struct CommandLine {
 };
 
 // Display success of builtin functions.
-void display_success(char* command_line, int exit_status)
+void display_exit_condition(char* command_line, int exit_status)
 {
 	fprintf(stderr, "+ completed '%s' ", command_line);
 	fprintf(stderr, "[%i]\n", exit_status);
@@ -38,9 +38,9 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line)
     // Fill args with remaining tokens.
     int i = 0;
     while (current_token != NULL) {
+
 		MyCommandLine->argv[i] = current_token;
 		MyCommandLine->argc = MyCommandLine->argc + 1;
-
 		current_token = strtok(NULL, delim);
 
         i++;
@@ -49,12 +49,25 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line)
    MyCommandLine->argv[i] = NULL;
 }
 
+int has_errors(struct CommandLine* MyCommandLine)
+{
+    if (MyCommandLine->argc > 16) {
+        fprintf(stderr, "Error: too many process arguments\n");
+        return EXIT_FAILURE;
+    }
+	
+	//if ()
+	return EXIT_SUCCESS;
+}
+
 int main(void)
 {
 	while (1) {
         char command_line[MAX_CMDLINE_SIZE];
         char *nl;
 	    struct CommandLine MyCommandLine;
+
+        MyCommandLine.argc = 0;
 
 		// Print prompt.
 		printf("sshell$ ");
@@ -75,15 +88,21 @@ int main(void)
 			*nl = '\0';
 
         parse_command_line(&MyCommandLine, command_line);
+		if (has_errors(&MyCommandLine)) {
+            return EXIT_FAILURE;
+        }
 
         if (!strcmp(MyCommandLine.argv[0], "exit")) {
 		    fprintf(stderr, "Bye...\n");
-			display_success(command_line, EXIT_SUCCESS);
+			display_exit_condition(command_line, EXIT_SUCCESS);
 			break;
         } else if (!strcmp(MyCommandLine.argv[0], "cd")) {
 		    // Valid input assumed.
-            chdir(MyCommandLine.argv[1]);
-            display_success(command_line, EXIT_SUCCESS);
+            int error_status = (-1) * chdir(MyCommandLine.argv[1]);
+			if (error_status == EXIT_FAILURE) {
+				fprintf(stderr, "Error: cannot cd into directory\n");
+            }
+			display_exit_condition(command_line, error_status);
         } else if (!strcmp(MyCommandLine.argv[0], "pwd")) {
 			char* directory = getcwd(NULL, 0);
 			fprintf(stdout, "%s\n", directory);
@@ -101,7 +120,7 @@ int main(void)
                 // Parent process.
                 int status;
                 waitpid(pid, &status, 0);
-                display_success(command_line,
+                display_exit_condition(command_line,
                 WEXITSTATUS(status));
             } else {
                 perror("fork");
