@@ -13,7 +13,7 @@
 // Resolve user input into two unique elements.
 struct CommandLine {
 	int argc;
-	char *argv[MAX_NUM_ARGS];
+	char* argv[MAX_NUM_ARGS];
 };
 
 // Display success of builtin functions.
@@ -23,7 +23,7 @@ void display_success(char* command_line, int exit_status)
 	fprintf(stderr, "[%i]\n", exit_status);
 }
 
-void parse_command_line(struct CommandLine *MyCommandLine, char* command_line)
+void parse_command_line(struct CommandLine* MyCommandLine, char* command_line)
 {
 	// Copy to preserve original input.
 	char command_line_copy[MAX_CMDLINE_SIZE];
@@ -85,8 +85,9 @@ int main(void)
             chdir(MyCommandLine.argv[1]);
             display_success(command_line, EXIT_SUCCESS);
         } else if (!strcmp(MyCommandLine.argv[0], "pwd")) {
-            // FIXME: A work in progress.
-            break;
+			char* directory = getcwd(NULL, 0);
+			fprintf(stdout, "%s\n", directory);
+            free(directory);
         } else {
             // Derived from lecture.
             pid_t pid = fork();
