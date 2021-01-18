@@ -33,9 +33,10 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line)
 
 	const char arg_delim[2] = " ";
 
+    // Parsing so ">" completion statement prints correctly.
 	char* positionptr = strchr(command_line, '>');
 	if (positionptr) {
-        // Second copy
+        // Second copy to keep whole command line intact.
 		char command_line_copy2[MAX_CMDLINE_SIZE];
 		strcpy(command_line_copy2, command_line);
 
@@ -103,19 +104,20 @@ int main(void)
 		if (nl)
 			*nl = '\0';
 
+        // Error Checking.
         parse_command_line(&MyCommandLine, command_line);
 		if (has_errors(&MyCommandLine) == EXIT_FAILURE) {
             continue;
         }
 
-		//printf("%s\n", MyCommandLine.redirect_file);
-		int stdout_copy = dup(STDOUT_FILENO); // for undoing redirection
+		int stdout_copy = dup(STDOUT_FILENO); // For undoing redirection.
+         // Derived from lecture
 		if(MyCommandLine.redirect_file){
 			int fd;
 			fd = open(MyCommandLine.redirect_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 			dup2(fd, STDOUT_FILENO);
 			close(fd);
-			MyCommandLine.redirect_file = NULL;
+			MyCommandLine.redirect_file = NULL; // Make sure not to open the file again unless new redirect is called.
 		}
 
         if (!strcmp(MyCommandLine.argv[0], "exit")) {
@@ -129,7 +131,7 @@ int main(void)
 				fprintf(stderr, "Error: cannot cd into directory\n");
             }
 			display_exit_condition(command_line, error_status);
-        } else if (!strcmp(MyCommandLine.argv[0], "pwd")) {
+        } else if (!strcmp(MyCommandLine.argv[0], "pwd")){
 			char* directory = getcwd(NULL, 0);
 			fprintf(stdout, "%s\n", directory);
             free(directory);
@@ -154,15 +156,9 @@ int main(void)
             }
         }
 
-		dup2(stdout_copy, STDOUT_FILENO);
+		dup2(stdout_copy, STDOUT_FILENO); // Redirect output back to terminal.
 		close(stdout_copy);
 	}
 
 	return EXIT_SUCCESS;
 }
-
-/*
-else if (!strcmp(MyCommandLine.argv[0], "set")) {
-	MyCommandLin
-}
-*/
