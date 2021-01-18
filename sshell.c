@@ -2,119 +2,113 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 // Provided assumptions.
 #define MAX_CMDLINE_SIZE 512
 #define MAX_NUM_ARGS 16
 #define MAX_TOKEN_SIZE 32
 
-// Display success of builtin functions.
-// void display_success(char* cmd) 
-// {
-// 	fprintf(stderr, "+ completed '%s' ", cmd);
-// 	fprintf(stderr, "[%i]\n", EXIT_SUCCESS);
-// }
-
-// Resolve user input into thre unique elements.
+// Resolve user input into two unique elements.
 struct CommandLine {
-	char command[MAX_CMDLINE_SIZE];
-	int num_args;
-	char args[MAX_NUM_ARGS][MAX_TOKEN_SIZE];
+	int argc;
+	char *argv[MAX_NUM_ARGS];
 };
 
-void parse_user_input(struct CommandLine *MyCommandLine, char* user_input) {
+// Display success of builtin functions.
+void display_success(char* command_line, int exit_status)
+{
+	fprintf(stderr, "+ completed '%s' ", command_line);
+	fprintf(stderr, "[%i]\n", exit_status);
+}
+
+void parse_command_line(struct CommandLine *MyCommandLine, char* command_line)
+{
 	// Copy to preserve original input.
-	char user_input_copy[MAX_CMDLINE_SIZE];
-    strcpy(user_input_copy, user_input);
+	char command_line_copy[MAX_CMDLINE_SIZE];
+    strcpy(command_line_copy, command_line);
+
     // Derived from https://www.tutorialspoint.com/c_standard_library/c_function_strtok.htm.
-    
 	const char delim[2] = " ";
-    char* token;
+    char* current_token;
 
     // Get the first token describing the command.
-    token = strtok(user_input_copy, delim);
-	strcpy(MyCommandLine->command, token);
+    current_token = strtok(command_line_copy, delim);
     // Fill args with remaining tokens.
-    int f = 0;
-	token = strtok(NULL, delim);
-    while (token != NULL) {
-        // command->args = (char **) realloc(command->args, (command->num_args)*sizeof(char*));
-		strcpy(MyCommandLine->args[f], token);
-		MyCommandLine->num_args = MyCommandLine->num_args + 1;
-        f++;
-		token = strtok(NULL, delim);
+    int i = 0;
+    while (current_token != NULL) {
+		MyCommandLine->argv[i] = current_token;
+		MyCommandLine->argc = MyCommandLine->argc + 1;
+
+		current_token = strtok(NULL, delim);
+
+        i++;
    }
-   
+   // Add the extra null argument.
+   MyCommandLine->argv[i] = NULL;
 }
 
 int main(void)
 {
-	char user_input[MAX_CMDLINE_SIZE];
-	// char buf[MAX_CMDLINE_SIZE];
-	struct CommandLine MyCommandLine;
 
 	while (1) {
-		MyCommandLine.num_args = 0;
-
-	 	char *nl;
-		//int retval;
+        char command_line[MAX_CMDLINE_SIZE];
+        char *nl;
+	    struct CommandLine MyCommandLine;
 
 		// Print prompt.
 		printf("sshell$ ");
 		fflush(stdout);
 
 		// Get command line.
-		fgets(user_input, MAX_CMDLINE_SIZE, stdin);
+		fgets(command_line, MAX_CMDLINE_SIZE, stdin);
 
-		// command.cmd = cmd;
 		// Print command line if stdin is not provided by terminal.
 		if (!isatty(STDIN_FILENO)) {
-			printf("%s", user_input);
+			printf("%s", command_line);
 			fflush(stdout);
 		}
 
 		// Remove trailing newline from command line.
-		nl = strchr(user_input, '\n');
+		nl = strchr(command_line, '\n');
 		if (nl)
 			*nl = '\0';
 
-        parse_user_input(&MyCommandLine, user_input);
-		// printf("%s\n%d\n", MyCommandLine.command, MyCommandLine.num_args);
-		
-	// 	// Builtin command.
-	// 	if (!strcmp(cmd, "exit")) {
-	// 		fprintf(stderr, "Bye...\n");
-	// 		display_success(cmd);
-	// 		break;
-	// 	} else if (cmd[0] == 'c' && cmd[1] == 'd') {
-			
-	// 		// The strkok function modifies original string, so we keep a copy for printing.
-	// 		char cmd_copy[MAX_CMDLINE_SIZE];
-	// 		strcpy(cmd_copy, cmd);
-	// 		// Derived from https://www.tutorialspoint.com/c_standard_library/c_function_strtok.htm.
-	// 		const char delim[2] = " ";
-	// 		char* token;
-			
-	// 		// Get the first token.
-	// 		token = strtok(cmd_copy, delim);
-			
-	// 		// Walk through other tokens.
-	// 		token = strtok(NULL, delim);
-	// 		//printf("%s\n", token);
-	// 		chdir(token);
+        parse_command_line(&MyCommandLine, command_line);
 
-	// 		display_success(cmd);
-	// 	}
-	// 	else if (!strcmp(cmd, "pwd")) {
-	// 		fprintf(stdout, "%s", getcwd(buf, MAX_CMDLINE_SIZE));
-	// 		fprintf(stdout, "\n");
-	// 		display_success(cmd);
-	// 	} else {
-	// 		// Regular command.
-	// 		// retval = system(cmd); // needs to be replaced w/ fork+exec+wait
-	// 		// fprintf(stdout, "Return status value for '%s': %d\n", cmd, retval);
-	// 	}
+        if (!strcmp(MyCommandLine.argv[0], "exit")) {
+		    fprintf(stderr, "Bye...\n");
+			display_success(command_line, EXIT_SUCCESS);
+			break;
+        } else if (!strcmp(MyCommandLine.argv[0], "cd")) {
+		    // Valid input assumed.
+            chdir(MyCommandLine.argv[1]);
+            display_success(command_line, EXIT_SUCCESS);
+        } else if (!strcmp(MyCommandLine.argv[0], "pwd")) {
+            // FIXME: A work in progress.
+            break;
+        } else {
+            // Derived from lecture.
+            pid_t pid = fork();
+            
+            if (pid == 0) {
+                // Child process.
+                execvp(MyCommandLine.argv[0], MyCommandLine.argv);
+                perror("execvp");
+                return EXIT_FAILURE;
+            } else if (pid > 0) {
+                // Parent process.
+                int status;
+                waitpid(pid, &status, 0);
+                display_success(command_line,
+                WEXITSTATUS(status));
+            } else {
+                perror("fork");
+                return EXIT_FAILURE;
+            }
+        }
 	}
-    
+
 	return EXIT_SUCCESS;
 }
