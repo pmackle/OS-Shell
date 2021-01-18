@@ -35,6 +35,7 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line)
 
 	char* positionptr = strchr(command_line, '>');
 	if (positionptr) {
+        // Second copy
 		char command_line_copy2[MAX_CMDLINE_SIZE];
 		strcpy(command_line_copy2, command_line);
 
@@ -108,11 +109,13 @@ int main(void)
         }
 
 		//printf("%s\n", MyCommandLine.redirect_file);
+		int stdout_copy = dup(STDOUT_FILENO); // for undoing redirection
 		if(MyCommandLine.redirect_file){
 			int fd;
-			fd = open(MyCommandLine.redirect_file, O_WRONLY | O_CREAT, 0644);
+			fd = open(MyCommandLine.redirect_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 			dup2(fd, STDOUT_FILENO);
 			close(fd);
+			MyCommandLine.redirect_file = NULL;
 		}
 
         if (!strcmp(MyCommandLine.argv[0], "exit")) {
@@ -151,8 +154,8 @@ int main(void)
             }
         }
 
-		//dup2(STDOUT_FILENO, fd);
-		
+		dup2(stdout_copy, STDOUT_FILENO);
+		close(stdout_copy);
 	}
 
 	return EXIT_SUCCESS;
