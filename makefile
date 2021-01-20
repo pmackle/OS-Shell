@@ -5,4 +5,4 @@ sshell.o : sshell.c
 	gcc -Wall -Wextra -Werror -c -o sshell.o sshell.c
 
 clean :
-	rm -f sshell *.o *.txt
+	rm -f sshell *.o
