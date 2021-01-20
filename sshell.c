@@ -29,47 +29,50 @@ void display_exit_condition(char* command_line, int exit_statuses[], int num_com
 	fprintf(stderr, "\n");
 }
 
-// void parse_command_line(struct CommandLine* MyCommandLine, char* command_line)
-// {
-// 	// Copy to preserve original input.
-// 	char command_line_copy[MAX_CMDLINE_SIZE];
-// 	strcpy(command_line_copy, command_line);
+void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, int i)
+{
+			MyCommandLine->argc = 0;
+			MyCommandLine->specified_file = NULL;
+			char command_line_copy1[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE]; // 2D to prevent commands being overwitten
 
-// 	const char arg_delim[2] = " ";
+			strcpy(command_line_copy1[i], command_line);
 
-//     // Parsing so ">" completion statement prints correctly.
-// 	char* redir_positionptr = strchr(command_line, '>');
-// 	if (redir_positionptr) {
-//         // Second copy to keep whole command line intact.
-//         // Search through for output redirection
-// 		char command_line_copy2[MAX_CMDLINE_SIZE];
-// 		strcpy(command_line_copy2, command_line);
+			const char arg_delim[2] = " ";
 
-// 		const char redirect_delim[2] = ">";
+			// Parsing so ">" completion statement prints correctly.
+			char* redir_positionptr = strchr(command_line, '>');
+			if (redir_positionptr) {
+				// Second copy to keep whole command line intact.
+				// Search through for output redirection
+				char command_line_copy2[MAX_CMDLINE_SIZE];
+				strcpy(command_line_copy2, command_line);
 
-// 		char* current_token2 = strtok(command_line_copy2, redirect_delim);
-// 		strcpy(command_line_copy, current_token2);
+				const char redirect_delim[2] = ">";
 
-// 		current_token2 = strtok(NULL, redirect_delim);
-// 		(MyCommandLine)->specified_file = strtok(current_token2, arg_delim);
-// 	}
+				char* current_token2 = strtok(command_line_copy2, redirect_delim);
+				strcpy(command_line_copy1[i], current_token2);
 
-//     // Derived from https://www.tutorialspoint.com/c_standard_library/c_function_strtok.htm.
-//     char* current_token;
+				current_token2 = strtok(NULL, redirect_delim);
+				MyCommandLine->specified_file = strtok(current_token2, arg_delim);
+			}
 
-//     // Get the first token describing the command.
-//     current_token = strtok(command_line_copy, arg_delim);
-//     // Fill args with remaining tokens.
-//     int i = 0;
-//     while (current_token != NULL) {
-// 		(MyCommandLine)->argv[i] = current_token;
-// 		(MyCommandLine)->argc = (MyCommandLine)->argc + 1;
-// 		current_token = strtok(NULL, arg_delim);
-//         i++;
-//    }
-//    // Add the extra null argument.
-//    (MyCommandLine)->argv[i] = NULL;
-// }
+			// Derived from https://www.tutorialspoint.com/c_standard_library/c_function_strtok.htm.
+			char* current_token;
+
+			// Get the first token describing the command.
+			current_token = strtok(command_line_copy1[i], arg_delim);
+			// Fill args with remaining tokens.
+			int j = 0;
+			while (current_token != NULL) {
+				MyCommandLine->argv[j] = current_token;
+				MyCommandLine->argc = MyCommandLine->argc + 1;
+				current_token = strtok(NULL, arg_delim);
+				j++;
+			}
+			// Add the extra null argument.
+			MyCommandLine->argv[j] = NULL;
+
+}
 
 int has_errors(struct CommandLine* MyCommandLine)
 {
@@ -77,7 +80,7 @@ int has_errors(struct CommandLine* MyCommandLine)
 		fprintf(stderr, "Error: too many process arguments\n");
 		return EXIT_FAILURE;
 	}
-	
+
 	return EXIT_SUCCESS;
 }
 
@@ -105,99 +108,39 @@ int main(void)
 		if (nl)
 			*nl = '\0';
 
-
-        // int has_pipe = 1;
+		// For seperating each command in pipeline into different array indeces.
         char* commands[MAX_NUM_PIPE_SIGNS + 1];
 
+		// The whole command line as inputted by the user.
         char command_line_copy[MAX_CMDLINE_SIZE];
         strcpy(command_line_copy, command_line);
 
+		// Seperate commands by pipe symbol.
         const char pipe_delim[2] = "|";
         char *token;
-    
         token = strtok(command_line_copy, pipe_delim);
-        // if (!strcmp(command_line, token)) {
-        //     has_pipe = 0;
-        // }
-    
+
         int num_commands_piped = 0;
         while( token != NULL ) {
             commands[num_commands_piped] = token;
             token = strtok(NULL, pipe_delim);
             num_commands_piped++;
         }
-		
-		// for (int i = 0; i < num_commands_piped; i++) {
-		// 	printf("%d: %s\n", i, commands[i]);
-		// }
 
+		// Our solution for piping requires us to parse each piped command into an
+		// individual CommandLine struct. This allows us to easily manipulate and 
+		// access each command in the pipeline at any point in time.
 		struct CommandLine MyCommandLine[num_commands_piped];
-
-		char command_line_copy1[num_commands_piped][MAX_CMDLINE_SIZE];
-		// char* current_tokens[num_commands_piped];
-
-		// int hasErrors[num_commands_piped];
 		for (int i = 0; i < num_commands_piped; i++) {
 			MyCommandLine[i].argc = 0;
 			MyCommandLine[i].specified_file = NULL;
-			
-			// parse_command_line(&(MyCommandLine[i]), commands[i]);
-			// Copy to preserve original input.
-			// char command_line_copy1[MAX_CMDLINE_SIZE];
-			strcpy(command_line_copy1[i], commands[i]);
-
-			const char arg_delim[2] = " ";
-
-			// Parsing so ">" completion statement prints correctly.
-			char* redir_positionptr = strchr(commands[i], '>');
-			if (redir_positionptr) {
-				// Second copy to keep whole command line intact.
-				// Search through for output redirection
-				char command_line_copy2[MAX_CMDLINE_SIZE];
-				strcpy(command_line_copy2, commands[i]);
-
-				const char redirect_delim[2] = ">";
-
-				char* current_token2 = strtok(command_line_copy2, redirect_delim);
-				strcpy(command_line_copy1[i], current_token2);
-
-				current_token2 = strtok(NULL, redirect_delim);
-				MyCommandLine[i].specified_file = strtok(current_token2, arg_delim);
-			}
-
-			// Derived from https://www.tutorialspoint.com/c_standard_library/c_function_strtok.htm.
-			char* current_token;
-
-			// Get the first token describing the command.
-			current_token = strtok(command_line_copy1[i], arg_delim);
-			// Fill args with remaining tokens.
-			int j = 0;
-			while (current_token != NULL) {
-				MyCommandLine[i].argv[j] = current_token;
-				MyCommandLine[i].argc = MyCommandLine[i].argc + 1;
-				current_token = strtok(NULL, arg_delim);
-				j++;
-			}
-			// Add the extra null argument.
-			MyCommandLine[i].argv[j] = NULL;
-
-			// for (int j = 0; j < MyCommandLine[i].argc; j++) {
-			// 	printf("%d: %s ", i, MyCommandLine[i].argv[j]);
-			// }
-			// printf("\n");
-			// hasErrors[i] = has_errors(&(MyCommandLine[i]));
+			parse_command_line(&MyCommandLine[i],commands[i], i);
 		}
-		// for (int i = 0; i < num_commands_piped; i++) {
-		// 	for (int j = 0; j < MyCommandLine[i].argc; j++) {
-		// 		printf("%d: %s ", i, MyCommandLine[i].argv[j]);
-		// 	}
-		// 	printf("\n");
-		// }
+
 
 		if (!strcmp(MyCommandLine[0].argv[0], "exit")) {
 			fprintf(stderr, "Bye...\n");
 			int builtin_exit_status[1] = {EXIT_SUCCESS};
-
 			display_exit_condition(command_line, builtin_exit_status, 1);
 			break;
 		} else if (!strcmp(MyCommandLine[0].argv[0], "cd")) {
@@ -231,10 +174,7 @@ int main(void)
 				}
 
 				pids[i] = fork();
-
-				if (pids[i] == 0) {
-					// Child process.
-
+				if (pids[i] == 0) {// Child process.
 					// Not the first in the pipeline. We do want to redirect the input.
 					if (i > 0) {
 						// Copy stdin to current file descriptor's readonly fd.
@@ -253,7 +193,6 @@ int main(void)
 					// final command to execute
 					if (i == num_commands_piped - 1) {
 						if (MyCommandLine[i].specified_file) {
-                            // printf("u here\n");
 							int fd;
 							fd = open(MyCommandLine[i].specified_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 							dup2(fd, STDOUT_FILENO);
@@ -266,17 +205,13 @@ int main(void)
                     fprintf(stderr, "Error: command not found\n");
                     perror("execvp");
                     return EXIT_FAILURE;
-				} else if (pids[i] > 0) {
+				} else if (pids[i] > 0) { // Parent process.
 					if (i > 0) {
 						close(fd[i-1][0]);
 					}
 					if (i < num_commands_piped - 1) {
 						close(fd[i][1]);
 					}
-                    // Parent process.
-                    // waitpid(pids[i], &(statuses[i]), 0);
-					// statuses[i] = WEXITSTATUS(statuses[i]);
-                    // display_exit_condition(command_line, WEXITSTATUS(status));
                 } else {
                     perror("fork");
                     return EXIT_FAILURE;
