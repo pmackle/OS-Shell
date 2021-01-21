@@ -31,12 +31,12 @@ void display_exit_condition(char* command_line, int exit_statuses[], int num_com
 	fprintf(stderr, "\n");
 }
 
-void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, int i, char command_line_copy1[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE])
+void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, int i, char command_line_copy_whitespaces[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE])
 {
 			MyCommandLine->argc = 0;
 			MyCommandLine->specified_file = NULL;
 
-			strcpy(command_line_copy1[i], command_line);
+			strcpy(command_line_copy_whitespaces[i], command_line);
 
 			const char arg_delim[2] = " ";
 
@@ -44,13 +44,13 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, i
 			if (redir_positionptr) {
 				// Second copy to keep whole command line intact.
 				// Search through for output redirection.
-				char command_line_copy2[MAX_CMDLINE_SIZE];
-				strcpy(command_line_copy2, command_line);
+				char command_line_copy_redirects[MAX_CMDLINE_SIZE];
+				strcpy(command_line_copy_redirects, command_line);
 
 				const char redirect_delim[2] = ">";
 
-				char* current_token2 = strtok(command_line_copy2, redirect_delim);
-				strcpy(command_line_copy1[i], current_token2);
+				char* current_token2 = strtok(command_line_copy_redirects, redirect_delim);
+				strcpy(command_line_copy_whitespaces[i], current_token2);
 
 				current_token2 = strtok(NULL, redirect_delim);
 				MyCommandLine->specified_file = strtok(current_token2, arg_delim);
@@ -60,7 +60,7 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, i
 			char* current_token;
 
 			// Get the first token describing the command.
-			current_token = strtok(command_line_copy1[i], arg_delim);
+			current_token = strtok(command_line_copy_whitespaces[i], arg_delim);
 			// Fill args with remaining tokens.
 			int j = 0;
 			while (current_token != NULL) {
@@ -72,6 +72,7 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, i
 					for(k = 0; k < len_current_token; k++){
 							MyCommandLine->argv[j][k] = current_token[k];
 					}
+					MyCommandLine->argv[j][k] = '\0';
 				} else {
 					MyCommandLine->argv[j] = current_token;
 				}
@@ -82,7 +83,6 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, i
 			}
 			// Add the extra null argument for exec.
 			MyCommandLine->argv[j] = NULL;
-
 }
 
 int has_errors(struct CommandLine* MyCommandLine)
@@ -127,13 +127,13 @@ continue_label:
         char* commands[MAX_NUM_PIPE_SIGNS + 1];
 
 		// The whole command line as inputted by the user.
-        char command_line_copy[MAX_CMDLINE_SIZE];
-        strcpy(command_line_copy, command_line);
+        char command_line_copy_pipes[MAX_CMDLINE_SIZE];
+        strcpy(command_line_copy_pipes, command_line);
 
 		// Seperate commands by pipe symbol.
         const char pipe_delim[2] = "|";
         char *token;
-        token = strtok(command_line_copy, pipe_delim);
+        token = strtok(command_line_copy_pipes, pipe_delim);
 
         int num_commands_piped = 0;
         while( token != NULL ) {
@@ -146,16 +146,19 @@ continue_label:
 		struct CommandLine MyCommandLine[num_commands_piped];
 		
 		// Copy the command line to incrementally destroy. Preserve the original while finding all the pipes in copy1.
-		char command_line_copy1[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE]; 
+		char command_line_copy_whitespaces[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE]; 
 
 		for (int i = 0; i < num_commands_piped; i++) {
 			MyCommandLine[i].argc = 0;
 			MyCommandLine[i].specified_file = NULL;
-			parse_command_line(&MyCommandLine[i],commands[i], i, command_line_copy1);
+
+			parse_command_line(&MyCommandLine[i],commands[i], i, command_line_copy_whitespaces);
+
 			if (has_errors(&MyCommandLine[i])) {
 				// The nested nature of this loop requires us to hop to the right exit case in this first of two similar cases.
 				goto break_label;
 			}
+			
 			for (int j = 0; j < MyCommandLine[i].argc; j++) {
 				if (MyCommandLine[i].argv[j][0] == '$') {
 					// The environmental variable must be exactly one character in the lowercase Latin alphabet.
