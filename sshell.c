@@ -14,6 +14,8 @@
 #define MAX_NUM_PIPE_SIGNS 3
 #define NUM_STRING_VARS 26
 
+enum parsing_errors{args, missing, no_output, permissions, output_location, none};
+
 // Resolve user input into two unique elements.
 struct CommandLine {
 	int argc;
@@ -31,68 +33,76 @@ void display_exit_condition(char* command_line, int exit_statuses[], int num_com
 	fprintf(stderr, "\n");
 }
 
-void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, int i, char command_line_copy_whitespaces[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE])
+void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, int i, char command_line_copy_whitespaces[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE], enum parsing_errors *parsing_error)
 {
-			MyCommandLine->argc = 0;
-			MyCommandLine->specified_file = NULL;
+	MyCommandLine->argc = 0;
+	MyCommandLine->specified_file = NULL;
 
-			strcpy(command_line_copy_whitespaces[i], command_line);
+	strcpy(command_line_copy_whitespaces[i], command_line);
 
-			const char arg_delim[2] = " ";
+	const char arg_delim[2] = " ";
 
-			char* redir_positionptr = strchr(command_line, '>');
-			if (redir_positionptr) {
-				// Second copy to keep whole command line intact.
-				// Search through for output redirection.
-				char command_line_copy_redirects[MAX_CMDLINE_SIZE];
-				strcpy(command_line_copy_redirects, command_line);
+	char* redir_positionptr = strchr(command_line, '>');
+	if (redir_positionptr) {
+		// Second copy to keep whole command line intact.
+		// Search through for output redirection.
+		char command_line_copy_redirects[MAX_CMDLINE_SIZE];
+		strcpy(command_line_copy_redirects, command_line);
 
-				const char redirect_delim[2] = ">";
+		const char redirect_delim[2] = ">";
 
-				char* current_token2 = strtok(command_line_copy_redirects, redirect_delim);
-				strcpy(command_line_copy_whitespaces[i], current_token2);
+		char* redirect_token = strtok(command_line_copy_redirects, redirect_delim);
+		strcpy(command_line_copy_whitespaces[i], redirect_token);
 
-				current_token2 = strtok(NULL, redirect_delim);
-				MyCommandLine->specified_file = strtok(current_token2, arg_delim);
+		redirect_token = strtok(NULL, redirect_delim);
+		if (redirect_token) {
+			int fd = open(redirect_token, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			
+			if (fd == -1) {
+				*parsing_error = permissions;
 			}
+			close(fd);
 
-			// Derived from https://www.tutorialspoint.com/c_standard_library/c_function_strtok.htm.
-			char* current_token;
+			MyCommandLine->specified_file = strtok(redirect_token, arg_delim);
+		} else {
+			*parsing_error = no_output;
+		}
+	}
 
-			// Get the first token describing the command.
-			current_token = strtok(command_line_copy_whitespaces[i], arg_delim);
-			// Fill args with remaining tokens.
-			int j = 0;
-			while (current_token != NULL) {
-				if (current_token[0] == '$') {
-					// Create enough space to fit any token.
-					MyCommandLine->argv[j] = (char*)malloc((MAX_TOKEN_SIZE + 1)*sizeof(char));
-					int len_current_token = strlen(current_token);
-					int k;
-					for(k = 0; k < len_current_token; k++){
-							MyCommandLine->argv[j][k] = current_token[k];
-					}
-					MyCommandLine->argv[j][k] = '\0';
-				} else {
-					MyCommandLine->argv[j] = current_token;
-				}
-				// Finalize addition of new token to command.
-				MyCommandLine->argc = MyCommandLine->argc + 1;
-				current_token = strtok(NULL, arg_delim);
-				j++;
+	// Derived from https://www.tutorialspoint.com/c_standard_library/c_function_strtok.htm.
+	char* current_token;
+
+	// Get the first token describing the command.
+	current_token = strtok(command_line_copy_whitespaces[i], arg_delim);
+	// Fill args with remaining tokens.
+	int j = 0;
+	while (current_token != NULL) {
+		if (current_token[0] == '$') {
+			// Create enough space to fit any token.
+			MyCommandLine->argv[j] = (char*)malloc((MAX_TOKEN_SIZE + 1)*sizeof(char));
+			int len_current_token = strlen(current_token);
+			int k;
+			for(k = 0; k < len_current_token; k++){
+					MyCommandLine->argv[j][k] = current_token[k];
 			}
-			// Add the extra null argument for exec.
-			MyCommandLine->argv[j] = NULL;
+			MyCommandLine->argv[j][k] = '\0';
+		} else {
+			MyCommandLine->argv[j] = current_token;
+		}
+		// Finalize addition of new token to command.
+		MyCommandLine->argc = MyCommandLine->argc + 1;
+		current_token = strtok(NULL, arg_delim);
+		j++;
+	}
+	// Add the extra null argument for exec.
+	MyCommandLine->argv[j] = NULL;
 }
 
-int has_errors(struct CommandLine* MyCommandLine)
+void command_has_errors(struct CommandLine* MyCommandLine, enum parsing_errors *parsing_error)
 {
 	if (MyCommandLine->argc > MAX_NUM_ARGS) {
-		fprintf(stderr, "Error: too many process arguments\n");
-		return EXIT_FAILURE;
+		*parsing_error = args;
 	}
-    
-	return EXIT_SUCCESS;
 }
 
 int main(void)
@@ -102,6 +112,8 @@ int main(void)
 // Restart the shell if invalid commands are present in the pipeline.
 continue_label:
 	while (1) {
+		enum parsing_errors parsing_error = none;
+
         char command_line[MAX_CMDLINE_SIZE];
         char *nl;
 
@@ -149,16 +161,39 @@ continue_label:
 		char command_line_copy_whitespaces[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE]; 
 
 		for (int i = 0; i < num_commands_piped; i++) {
+			// Initialize an empty list of commands. 
 			MyCommandLine[i].argc = 0;
 			MyCommandLine[i].specified_file = NULL;
 
-			parse_command_line(&MyCommandLine[i],commands[i], i, command_line_copy_whitespaces);
+			parse_command_line(&MyCommandLine[i],commands[i], i, command_line_copy_whitespaces, &parsing_error);
+			command_has_errors(&MyCommandLine[i], &parsing_error);
 
-			if (has_errors(&MyCommandLine[i])) {
-				// The nested nature of this loop requires us to hop to the right exit case in this first of two similar cases.
-				goto break_label;
+			// What's causing the errant behavior?
+			switch (parsing_error) {
+				case args:
+					fprintf(stderr, "Error: too many process arguments\n");
+					break;
+				case missing:
+					fprintf(stderr, "Error: missing command\n");
+					break;
+				case no_output:
+					fprintf(stderr, "Error: no output file\n");
+					break;
+				case permissions:
+					fprintf(stderr, "Error: cannot open output file\n");
+					break;
+				case output_location:
+					fprintf(stderr, "Error: mislocated output redirection\n");
+					break;
+				default:
+					break;
 			}
-			
+
+			if (parsing_error != none) {
+				// The nested nature of this loop requires us to hop to the right exit case in this first of two similar cases.
+				goto continue_label;
+			}
+
 			for (int j = 0; j < MyCommandLine[i].argc; j++) {
 				if (MyCommandLine[i].argv[j][0] == '$') {
 					// The environmental variable must be exactly one character in the lowercase Latin alphabet.
@@ -185,8 +220,6 @@ continue_label:
 			fprintf(stderr, "Bye...\n");
 			int builtin_exit_status[1] = {EXIT_SUCCESS};
 			display_exit_condition(command_line, builtin_exit_status, 1);
-		// Deal with errors.
-		break_label:
 			break;
 		} else if (!strcmp(MyCommandLine[0].argv[0], "set")) {
 			if (MyCommandLine[0].argc == 1 || strlen(MyCommandLine[0].argv[1]) != 1 || (MyCommandLine[0].argv[1][0] < 'a' || MyCommandLine[0].argv[1][0] > 'z')) {
