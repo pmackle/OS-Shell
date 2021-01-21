@@ -57,11 +57,11 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, i
 		redirect_token = strtok(NULL, redirect_delim);
 		if (redirect_token) {
 			int fd = open(redirect_token, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-			
+
 			if (fd == -1) {
 				*parsing_error = permissions;
 			} else {
-				// Delete the file. We opened it up just to see if we could. Meaningful actions come later. 
+				// Delete the file. We opened it up just to see if we could. Meaningful actions come later.
 				remove(redirect_token);
 			}
 			close(fd);
@@ -111,6 +111,9 @@ void command_has_errors(struct CommandLine* MyCommandLine, enum parsing_errors *
 int main(void)
 {
 	char string_vars[NUM_STRING_VARS][MAX_TOKEN_SIZE];
+	for (int i = 0; i < NUM_STRING_VARS; i++) {
+	  string_vars[i][0] = '\0';
+	}
 
 // Restart the shell if invalid commands are present in the pipeline.
 continue_label:
@@ -159,12 +162,12 @@ continue_label:
 
 		// Our solution for piping requires us to parse each piped command into an individual CommandLine struct. This allows us to easily manipulate and access each command in the pipeline at any point in time.
 		struct CommandLine MyCommandLine[num_commands_piped];
-		
+
 		// Copy the command line to incrementally destroy. Preserve the original while finding all the pipes in copy1.
-		char command_line_copy_whitespaces[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE]; 
+		char command_line_copy_whitespaces[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE];
 
 		for (int i = 0; i < num_commands_piped; i++) {
-			// Initialize an empty list of commands. 
+			// Initialize an empty list of commands.
 			MyCommandLine[i].argc = 0;
 			MyCommandLine[i].specified_file = NULL;
 
@@ -206,14 +209,9 @@ continue_label:
 						goto continue_label;
 					} else {
 						int location = MyCommandLine[i].argv[j][1] - 'a';
-						// Delete whatever the variable initially was. 
+						// Delete whatever the variable initially was.
 						free(MyCommandLine[i].argv[j]);
-
-						if (string_vars[location]) {
-							MyCommandLine[i].argv[j] = string_vars[location];
-						} else {
-							MyCommandLine[i].argv[j] = "";
-						}
+                        MyCommandLine[i].argv[j] = string_vars[location];
 					}
 				}
 			}
@@ -238,7 +236,7 @@ continue_label:
 				int x;
 				for (x = 0; x < token_length; x++) {
 					// Copy the second set arg into our list of simple environment variables.
-					string_vars[location][x] = MyCommandLine[0].argv[2][x];	
+					string_vars[location][x] = MyCommandLine[0].argv[2][x];
 				}
 				string_vars[location][x] = '\0';
 
