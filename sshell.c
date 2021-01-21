@@ -60,6 +60,9 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, i
 			
 			if (fd == -1) {
 				*parsing_error = permissions;
+			} else {
+				// Delete the file. We opened it up just to see if we could. Meaningful actions come later. 
+				remove(redirect_token);
 			}
 			close(fd);
 
