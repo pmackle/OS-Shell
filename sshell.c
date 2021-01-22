@@ -33,7 +33,7 @@ void display_exit_condition(char* command_line, int exit_statuses[], int num_com
 	fprintf(stderr, "\n");
 }
 
-void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, int i, char command_line_copy_whitespaces[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE], enum parsing_errors *parsing_error)
+void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, int i, char command_line_copy_whitespaces[MAX_NUM_PIPE_SIGNS][MAX_CMDLINE_SIZE], enum parsing_errors *parsing_error, int num_commands_piped)
 {
 	MyCommandLine->argc = 0;
 	MyCommandLine->specified_file = NULL;
@@ -52,21 +52,36 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, i
 		const char redirect_delim[2] = ">";
 
 		char* redirect_token = strtok(command_line_copy_redirects, redirect_delim);
+
+        // Nothing to be redirected.
+        if (!redirect_token) {
+            *parsing_error = missing;
+        }
+
 		strcpy(command_line_copy_whitespaces[i], redirect_token);
 
 		redirect_token = strtok(NULL, redirect_delim);
 		if (redirect_token) {
-			int fd = open(redirect_token, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (i != num_commands_piped - 1) {
+                *parsing_error = output_location;
+            } else {
+                int fd = open(redirect_token, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
-			if (fd == -1) {
-				*parsing_error = permissions;
-			} else {
-				// Delete the file. We opened it up just to see if we could. Meaningful actions come later.
-				remove(redirect_token);
-			}
-			close(fd);
+                if (fd == -1) {
+                    *parsing_error = permissions;
+                } else {
+                    // Delete the file. We opened it up just to see if we could. Meaningful actions come later.
+                    remove(redirect_token);
+                }
+                close(fd);
 
-			MyCommandLine->specified_file = strtok(redirect_token, arg_delim);
+                MyCommandLine->specified_file = strtok(redirect_token, arg_delim);
+
+                // If the redirect filename is comprised exclusively of whitespace.
+                if (!MyCommandLine->specified_file) {
+                    *parsing_error = no_output;
+                }
+            }
 		} else {
 			*parsing_error = no_output;
 		}
@@ -78,6 +93,12 @@ void parse_command_line(struct CommandLine* MyCommandLine, char* command_line, i
 	// Get the first token describing the command.
 	current_token = strtok(command_line_copy_whitespaces[i], arg_delim);
 	// Fill args with remaining tokens.
+
+    // Nothing to be done.
+    if (!current_token) {
+        *parsing_error = missing;
+    }
+
 	int j = 0;
 	while (current_token != NULL) {
 		if (current_token[0] == '$') {
@@ -111,6 +132,7 @@ void command_has_errors(struct CommandLine* MyCommandLine, enum parsing_errors *
 int main(void)
 {
 	char string_vars[NUM_STRING_VARS][MAX_TOKEN_SIZE];
+    // When the shell launches, all string vars are empty.
 	for (int i = 0; i < NUM_STRING_VARS; i++) {
 	  string_vars[i][0] = '\0';
 	}
@@ -140,6 +162,21 @@ continue_label:
 		nl = strchr(command_line, '\n');
 		if (nl)
 			*nl = '\0';
+
+        // Check for the edge cases where nothing is entered, or exactly the first character the user enters is a pipe or redirect.
+        int edge_cases_fail = 0;
+
+        if (strlen(command_line) == 0) {
+            edge_cases_fail = 1;
+        }
+        if (command_line[0] == '>' || command_line[0] == '|') {
+            edge_cases_fail = 1;
+        }
+
+        if (edge_cases_fail) {
+            fprintf(stderr, "Error: missing command\n");
+            goto continue_label;
+        }
 
 		// For separating each command in pipeline into different array indeces.
         char* commands[MAX_NUM_PIPE_SIGNS + 1];
@@ -171,9 +208,8 @@ continue_label:
 			MyCommandLine[i].argc = 0;
 			MyCommandLine[i].specified_file = NULL;
 
-			parse_command_line(&MyCommandLine[i],commands[i], i, command_line_copy_whitespaces, &parsing_error);
+			parse_command_line(&MyCommandLine[i],commands[i], i, command_line_copy_whitespaces, &parsing_error, num_commands_piped);
 			command_has_errors(&MyCommandLine[i], &parsing_error);
-
 			// What's causing the errant behavior?
 			switch (parsing_error) {
 				case args:
@@ -265,7 +301,7 @@ continue_label:
 			int fd[num_commands_piped - 1][2];
 			int statuses[num_commands_piped];
 
-            // Basic methodology Derived from https://stackoverflow.com/questions/8389033/implementation-of-multiple-pipes-in-c.
+            // Basic methodology derived from https://stackoverflow.com/questions/8389033/implementation-of-multiple-pipes-in-c.
 			for (int i = 0; i < num_commands_piped; i++) {
                 // Don't pipe the last argument.
 				if (i < num_commands_piped - 1) {
@@ -316,6 +352,14 @@ continue_label:
                     return EXIT_FAILURE;
                 }
 			}
+
+            // Check last character of entry last.
+            int len_command_line = strlen(command_line);
+            if (command_line[len_command_line - 1] == '>' || command_line[len_command_line - 1] == '|') {
+                fprintf(stderr, "Error: missing command\n");
+                goto continue_label;
+            }
+
 			// Collect all exit statuses after completion of every command, to print sequentially.
 			for (int i = 0; i < num_commands_piped; i++) {
 				waitpid(pids[i], &(statuses[i]), 0);
