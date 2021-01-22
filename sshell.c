@@ -197,6 +197,11 @@ continue_label:
             num_commands_piped++;
         }
 
+		// Ignore unused pipe.
+		int len_command_line = strlen(command_line);
+		if(command_line[len_command_line-1] == '|'){
+			num_commands_piped--;
+		}
 		// Our solution for piping requires us to parse each piped command into an individual CommandLine struct. This allows us to easily manipulate and access each command in the pipeline at any point in time.
 		struct CommandLine MyCommandLine[num_commands_piped];
 
